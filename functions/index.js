@@ -8,20 +8,19 @@ const db = admin.firestore();
 // TODO: improve this function when firebase's team updates their subcollections queries
 exports.onEventCreated = functions.firestore
     .document('users/{userId}/events/{eventId}')
-    .onCreate((snap, context) => {
-        let event = snap.data()
-        if (event.fromNotification) return null
-        let userId = context.params.userId
-        return db.collection('users')
-            .listDocuments()
-            .then((users) => Promise.all(users
-                .filter((user) => user.id !== userId)
-                .map((user) => user
-                    .collection('subjects')
-                    .where("code", "==", event.subject.code)
-                    .where("classGroup", "==", event.subject.classGroup)
-                    .get()
-                    .then((_) => user.collection('notifications').add({ event }))
-                )
-            ))
+    .onCreate(async (snap, context) => {
+        const event = snap.data()
+        if (event.fromNotification) return
+        const userId = context.params.userId
+        const users = await db.collection('users').listDocuments()
+        await Promise.all(users.map(async user => {
+            const subjects = await user
+                .collection('subjects')
+                .where("code", "==", event.subject.code)
+                .where("classGroup", "==", event.subject.classGroup)
+                .get()
+            if (subjects.size > 0 && user.id != userId) {
+                await user.collection('notifications').add({ event })
+            }
+        }))
     })
