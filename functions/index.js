@@ -21,6 +21,24 @@ exports.onEventCreated = functions.firestore
                 .get()
             if (subjects.size > 0 && user.id != userId) {
                 await user.collection('notifications').add({ event })
+                const notificationsToken = (await user.get()).data().notificationsToken
+                console.log(event);
+                console.log(notificationsToken);
+                if (notificationsToken) {
+                    const message = {
+                        notification: {
+                            title: event.type == 'test' ? 'Nova prova' : 'Novo trabalho',
+                            body: `Um de seus colegas adicionou ${event.type == 'test' ? 'uma prova' : 'um trabalho'}.`
+                        },
+                        data: {
+                            destination: '/agenda',
+                            click_action: "FLUTTER_NOTIFICATION_CLICK",
+                        },
+                        token: notificationsToken
+                    }
+                    console.log(message);
+                    await admin.messaging().send(message)
+                }
             }
         }))
     })
